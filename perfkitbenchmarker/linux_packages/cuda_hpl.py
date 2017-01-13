@@ -1,4 +1,4 @@
-# Copyright 2014 PerfKitBenchmarker Authors. All rights reserved.
+# Copyright 2016 PerfKitBenchmarker Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,50 +13,56 @@
 # limitations under the License.
 
 
-"""Module containing HPCC installation and cleanup functions.
+"""Module containing NVIDIA's CUDA Accelerated Linpack installation and 
+   cleanup functions. 
+   
+   Due to NVIDIA's license, the tarball must be downloaded
+   manually from NVIDIA and placed in PKB's data folder.
 
-The HPC Challenge is a collection of High Performance Computing benchmarks,
-including High Performance Linpack (HPL). More information can be found here:
-http://icl.cs.utk.edu/hpcc/
+The package can be downloaded here (registration required):
+https://developer.nvidia.com/accelerated-computing-developer-program-home
 """
 
 import re
 
 from perfkitbenchmarker.linux_packages import openblas
+from perfkitbenchmarker.linux_packages import cuda_toolkit_8
 from perfkitbenchmarker.linux_packages import INSTALL_DIR
+from perfkitbenchmarker import data
 
-HPCC_TAR = 'hpcc-1.4.3.tar.gz'
-HPCC_URL = 'http://icl.cs.utk.edu/projectsfiles/hpcc/download/' + HPCC_TAR
-HPCC_DIR = '%s/hpcc-1.4.3' % INSTALL_DIR
+HPL_TAR = 'hpl-2.0_FERMI_v15.tgz'
+HPL_DIR = '%s/hpl-2.0_FERMI_v15' % INSTALL_DIR
 MAKE_FLAVOR = 'Linux_PII_CBLAS'
-HPCC_MAKEFILE = 'Make.' + MAKE_FLAVOR
-HPCC_MAKEFILE_PATH = HPCC_DIR + '/hpl/' + HPCC_MAKEFILE
+#HPCC_MAKEFILE = 'Make.' + MAKE_FLAVOR
+#HPCC_MAKEFILE_PATH = HPCC_DIR + '/hpl/' + HPCC_MAKEFILE
 
 
 def _Install(vm):
-  """Installs the HPCC package on the VM."""
+  """Installs the CUDA HPL package on the VM."""
   vm.Install('wget')
   vm.Install('openmpi')
   vm.Install('openblas')
-  vm.RemoteCommand('wget %s -P %s' % (HPCC_URL, INSTALL_DIR))
-  vm.RemoteCommand('cd %s && tar xvfz %s' % (INSTALL_DIR, HPCC_TAR))
-  vm.RemoteCommand(
-      'cp %s/hpl/setup/%s %s' % (HPCC_DIR, HPCC_MAKEFILE, HPCC_MAKEFILE_PATH))
-  sed_cmd = (
-      'sed -i -e "/^MP/d" -e "s/gcc/mpicc/" -e "s/g77/mpicc/" '
-      '-e "s/\\$(HOME)\\/netlib\\/ARCHIVES\\/Linux_PII/%s/" '
-      '-e "s/libcblas.*/libopenblas.a/" '
-      '-e "s/\\-lm/\\-lgfortran \\-lm/" %s' %
-      (re.escape(openblas.OPENBLAS_DIR), HPCC_MAKEFILE_PATH))
-  vm.RemoteCommand(sed_cmd)
-  vm.RemoteCommand('cd %s; make arch=Linux_PII_CBLAS' % HPCC_DIR)
+  vm.Install('cuda_toolkit_8')
+  local_tar_file_path = data.ResourcePath(HPL_TAR)
+  vm.PushFile(local_tar_file_path, INSTALL_DIR)
+  vm.RemoteCommand('cd %s && tar xvf %s' % (INSTALL_DIR, HPL_TAR))
+  #vm.RemoteCommand(
+  #    'cp %s/hpl/setup/%s %s' % (HPCC_DIR, HPCC_MAKEFILE, HPCC_MAKEFILE_PATH))
+  #sed_cmd = (
+  #    'sed -i -e "/^MP/d" -e "s/gcc/mpicc/" -e "s/g77/mpicc/" '
+  #    '-e "s/\\$(HOME)\\/netlib\\/ARCHIVES\\/Linux_PII/%s/" '
+  #    '-e "s/libcblas.*/libopenblas.a/" '
+  #    '-e "s/\\-lm/\\-lgfortran \\-lm/" %s' %
+  #    (re.escape(openblas.OPENBLAS_DIR), HPCC_MAKEFILE_PATH))
+  #vm.RemoteCommand(sed_cmd)
+  #vm.RemoteCommand('cd %s; make arch=Linux_PII_CBLAS' % HPCC_DIR)
 
 
 def YumInstall(vm):
-  """Installs the HPCC package on the VM."""
+  """Installs the CUDA HPL package on the VM."""
   _Install(vm)
 
 
 def AptInstall(vm):
-  """Installs the HPCC package on the VM."""
+  """Installs the CUDA HPL package on the VM."""
   _Install(vm)

@@ -1,4 +1,4 @@
-# Copyright 2014 PerfKitBenchmarker Authors. All rights reserved.
+# Copyright 2016 PerfKitBenchmarker Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Runs HPC Challenge.
+"""Runs NVIDIA's CUDA Accelerated HPL.
 
-Homepage: http://icl.cs.utk.edu/hpcc/
+Download page (registration required):
+https://developer.nvidia.com/accelerated-computing-developer-program-home
+Note that the tarball must be downloaded manually and placed in PKB's data
+folder. See instructions in linux_packagtes/cuda_hpl.py for more information.
 
-Most of the configuration of the HPC-Challenge revolves around HPL, the rest of
-the HPCC piggybacks upon the HPL configration.
-
-Homepage: http://www.netlib.org/benchmark/hpl/
+HPL Homepage: http://www.netlib.org/benchmark/hpl/
 
 HPL requires a BLAS library (Basic Linear Algebra Subprograms)
 OpenBlas: http://www.openblas.net/
@@ -55,27 +55,33 @@ MACHINEFILE = 'machinefile'
 BLOCK_SIZE = 192
 STREAM_METRICS = ['Copy', 'Scale', 'Add', 'Triad']
 
-BENCHMARK_NAME = 'hpcc'
+BENCHMARK_NAME = 'cuda_hpl'
 BENCHMARK_CONFIG = """
-hpcc:
-  description: Runs HPCC. Specify the number of VMs with --num_vms
+cuda_hpl:
+  description: Runs CUDA HPL. Specify the number of VMs with --num_vms
+  flags:
+    gce_migrate_on_maintenance: False
   vm_groups:
     default:
-      vm_spec: *default_single_core
-      vm_count: null
+      vm_spec:
+        GCP:
+          image: /ubuntu-os-cloud/ubuntu-1604-xenial-v20161115
+          machine_type: n1-standard-4-k80x1
+          zone: us-east1-d
+          boot_disk_size: 200
 """
 
-flags.DEFINE_integer('memory_size_mb',
-                     None,
-                     'The amount of memory in MB on each machine to use. By '
-                     'default it will use the entire system\'s memory.')
-flags.DEFINE_string('hpcc_binary', None,
-                    'The path of prebuilt hpcc binary to use. If not provided, '
-                    'this benchmark built its own using OpenBLAS.')
-flags.DEFINE_list('hpcc_mpi_env', [],
-                  'Comma seperated list containing environment variables '
-                  'to use with mpirun command. e.g. '
-                  'MKL_DEBUG_CPU_TYPE=7,MKL_ENABLE_INSTRUCTIONS=AVX512')
+#flags.DEFINE_integer('memory_size_mb',
+#                     None,
+#                     'The amount of memory in MB on each machine to use. By '
+#                     'default it will use the entire system\'s memory.')
+#flags.DEFINE_string('hpcc_binary', None,
+#                    'The path of prebuilt hpcc binary to use. If not provided, '
+#                    'this benchmark built its own using OpenBLAS.')
+#flags.DEFINE_list('hpcc_mpi_env', [],
+#                  'Comma seperated list containing environment variables '
+#                  'to use with mpirun command. e.g. '
+#                  'MKL_DEBUG_CPU_TYPE=7,MKL_ENABLE_INSTRUCTIONS=AVX512')
 
 
 
@@ -89,9 +95,9 @@ def CheckPrerequisites(benchmark_config):
   Raises:
     perfkitbenchmarker.data.ResourceNotFound: On missing resource.
   """
-  data.ResourcePath(HPCCINF_FILE)
-  if FLAGS['hpcc_binary'].present:
-    data.ResourcePath(FLAGS.hpcc_binary)
+  #data.ResourcePath(HPCCINF_FILE)
+  #if FLAGS['hpcc_binary'].present:
+  #  data.ResourcePath(FLAGS.hpcc_binary)
 
 
 def CreateMachineFile(vms):
@@ -156,10 +162,10 @@ def CreateHpccinf(vm, benchmark_spec):
   vm.RemoteCommand(sed_cmd)
 
 
-def PrepareHpcc(vm):
-  """Builds HPCC on a single vm."""
-  logging.info('Building HPCC on %s', vm)
-  vm.Install('hpcc')
+def PrepareCudaHpl(vm):
+  """Builds CUDA HPL on a single vm."""
+  logging.info('Building CUDA HPL on %s', vm)
+  vm.Install('cuda_hpl')
 
 
 def PrepareBinaries(vms):
@@ -179,7 +185,7 @@ def PrepareBinaries(vms):
 
 
 def Prepare(benchmark_spec):
-  """Install HPCC on the target vms.
+  """Install CUDA HPL on the target vms.
 
   Args:
     benchmark_spec: The benchmark specification. Contains all data that is
@@ -188,10 +194,10 @@ def Prepare(benchmark_spec):
   vms = benchmark_spec.vms
   master_vm = vms[0]
 
-  PrepareHpcc(master_vm)
-  CreateHpccinf(master_vm, benchmark_spec)
-  CreateMachineFile(vms)
-  PrepareBinaries(vms)
+  PrepareCudaHpl(master_vm)
+  #CreateHpccinf(master_vm, benchmark_spec)
+  #CreateMachineFile(vms)
+  #PrepareBinaries(vms)
 
 
 def UpdateMetadata(metadata):
