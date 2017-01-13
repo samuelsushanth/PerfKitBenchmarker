@@ -1,7 +1,7 @@
 unchanged:
---- hpl-2.0_FERMI_v15/src/cuda/cuda_dgemm.c	2012-07-18 23:33:43.000000000 -0700
-+++ hpl-2.0_FERMI_v15/src/cuda/cuda_dgemm_updated.c	2017-01-13 13:25:59.125937264 -0800
-@@ -360,7 +360,10 @@
+--- hpl-2.0_FERMI_v15/src/cuda/cuda_dgemm.c	2017-01-13 14:45:54.411525307 -0800
++++ hpl-2.0_FERMI_v15/src/cuda/cuda_dgemm_modified.c	2017-01-13 14:49:01.262022385 -0800
+@@ -360,12 +360,17 @@
            cudaSetDevice(mydev);
  #ifdef GOTO
        handle2 = dlopen ("libgoto2.so", RTLD_LAZY);
@@ -13,26 +13,51 @@ unchanged:
  #ifdef ACML
        handle2 = dlopen ("libacml_mp.so", RTLD_LAZY);
  #else
-@@ -377,6 +380,9 @@
+       handle2 = dlopen ("libmkl_intel_lp64.so", RTLD_LAZY);
+ #endif
++#endif
++#endif
+ 
+       if (!handle2) 
+       {
+@@ -376,12 +381,17 @@
+ 
  #ifdef GOTO
        mkl_dtrsm = (void(*)())dlsym(handle2, "dtrsm_");
- #endif
+-#endif
++#else
 +#ifdef OPENBLAS
 +      mkl_dtrsm = (void(*)())dlsym(handle2, "dtrsm_");
-+#endif
++#else
  #ifdef ACML
        mkl_dtrsm = (void(*)())dlsym(handle2, "dtrsm_");
  #else
-@@ -655,6 +661,9 @@
+       mkl_dtrsm = (void(*)())dlsym(handle2, "dtrsm");
+ #endif
++#endif
++#endif
+ 
+       if ((error = dlerror()) != NULL)  {
+           fprintf (stderr, "%s\n", error);
+@@ -654,12 +664,17 @@
+           cudaSetDevice(mydev);
  #ifdef GOTO
        handle = dlopen ("libgoto2.so", RTLD_LAZY);
- #endif
+-#endif
++#else
 +#ifdef OPENBLAS
 +      handle2 = dlopen("libopenblas.so", RTLD_LAZY);
-+#endif
++#else
  #ifdef ACML
        handle = dlopen ("libacml_mp.so", RTLD_LAZY);
  #else
+       handle = dlopen ("libmkl_intel_lp64.so", RTLD_LAZY);
+ #endif
++#endif
++#endif
+ 
+       if (!handle) {
+         fprintf (stderr, "%s\n", dlerror());
 only in patch2:
 unchanged:
 --- hpl-2.0_FERMI_v15/Make.CUDA	2012-07-16 19:35:11.000000000 -0700
