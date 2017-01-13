@@ -1,0 +1,48 @@
+unchanged:
+--- hpl-2.0_FERMI_v15/src/cuda/cuda_dgemm.c	2012-07-18 23:33:43.000000000 -0700
++++ hpl-2.0_FERMI_v15/src/cuda/cuda_dgemm_updated.c	2017-01-13 13:25:59.125937264 -0800
+@@ -360,7 +360,10 @@
+           cudaSetDevice(mydev);
+ #ifdef GOTO
+       handle2 = dlopen ("libgoto2.so", RTLD_LAZY);
+-#endif
++#else
++#ifdef OPENBLAS
++      handle2 = dlopen("libopenblas.so", RTLD_LAZY);
++#else
+ #ifdef ACML
+       handle2 = dlopen ("libacml_mp.so", RTLD_LAZY);
+ #else
+@@ -377,6 +380,9 @@
+ #ifdef GOTO
+       mkl_dtrsm = (void(*)())dlsym(handle2, "dtrsm_");
+ #endif
++#ifdef OPENBLAS
++      mkl_dtrsm = (void(*)())dlsym(handle2, "dtrsm_");
++#endif
+ #ifdef ACML
+       mkl_dtrsm = (void(*)())dlsym(handle2, "dtrsm_");
+ #else
+@@ -655,6 +661,9 @@
+ #ifdef GOTO
+       handle = dlopen ("libgoto2.so", RTLD_LAZY);
+ #endif
++#ifdef OPENBLAS
++      handle2 = dlopen("libopenblas.so", RTLD_LAZY);
++#endif
+ #ifdef ACML
+       handle = dlopen ("libacml_mp.so", RTLD_LAZY);
+ #else
+only in patch2:
+unchanged:
+--- hpl-2.0_FERMI_v15/Make.CUDA	2012-07-16 19:35:11.000000000 -0700
++++ hpl-2.0_FERMI_v15/Make.CUDA.updated	2017-01-13 13:32:27.330821564 -0800
+@@ -133,7 +133,7 @@
+ LAinc        =
+ # CUDA
+ #LAlib        = -L /home/cuda/Fortran_Cuda_Blas  -ldgemm -L/usr/local/cuda/lib -lcublas  -L$(LAdir) -lmkl -lguide -lpthread
+-LAlib        = -L $(TOPdir)/src/cuda  -ldgemm -L/usr/local/cuda/lib64 -lcuda -lcudart -lcublas -L$(LAdir) -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5
++LAlib        = -L $(TOPdir)/src/cuda  -ldgemm -L/usr/local/cuda/lib64 -lcuda -lcudart -lcublas -lopenblas -lpthread -lgfortran
+ #
+ # ----------------------------------------------------------------------
+ # - F77 / C interface --------------------------------------------------
