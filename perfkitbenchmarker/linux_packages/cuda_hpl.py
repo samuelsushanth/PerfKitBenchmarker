@@ -15,7 +15,7 @@
 
 """Module containing NVIDIA's CUDA Accelerated Linpack installation and 
    cleanup functions. 
-   
+
    Due to NVIDIA's license, the tarball must be downloaded
    manually from NVIDIA and placed in PKB's data folder.
 
@@ -25,12 +25,13 @@ https://developer.nvidia.com/accelerated-computing-developer-program-home
 
 import re
 
-from perfkitbenchmarker.linux_packages import openblas
-from perfkitbenchmarker.linux_packages import cuda_toolkit_8
+#from perfkitbenchmarker.linux_packages import openblas
+#from perfkitbenchmarker.linux_packages import cuda_toolkit_8
 from perfkitbenchmarker.linux_packages import INSTALL_DIR
 from perfkitbenchmarker import data
 
 HPL_TAR = 'hpl-2.0_FERMI_v15.tgz'
+HPL_PATCH = 'hpl_cuda.patch'
 HPL_DIR = '%s/hpl-2.0_FERMI_v15' % INSTALL_DIR
 MAKE_FLAVOR = 'Linux_PII_CBLAS'
 #HPCC_MAKEFILE = 'Make.' + MAKE_FLAVOR
@@ -40,12 +41,16 @@ MAKE_FLAVOR = 'Linux_PII_CBLAS'
 def _Install(vm):
   """Installs the CUDA HPL package on the VM."""
   vm.Install('wget')
-  vm.Install('openmpi')
-  vm.Install('openblas')
+  #vm.Install('openmpi')
+  #vm.Install('openblas')
+  vm.InstallPackages('libopenblas-dev libopenmpi-dev') #TODO: no
   vm.Install('cuda_toolkit_8')
-  local_tar_file_path = data.ResourcePath(HPL_TAR)
-  vm.PushFile(local_tar_file_path, INSTALL_DIR)
+  vm.PushFile(data.ResourcePath(HPL_TAR), INSTALL_DIR)
+  vm.PushFile(data.ResourcePath(HPL_PATCH), INSTALL_DIR)
   vm.RemoteCommand('cd %s && tar xvf %s' % (INSTALL_DIR, HPL_TAR))
+  vm.RemoteCommand('cd %s && patch -p0 < %s' % (INSTALL_DIR, HPL_PATCH))
+  sed_cmd = 'sed -i s,HPL_DIR=.*$,HPL_DIR=%s, bin/CUDA/run_linpack' % HPL_DIR
+  vm.RemoteCommand('cd %s && %s' % (INSTALL_DIR, sed_cmd))
   #vm.RemoteCommand(
   #    'cp %s/hpl/setup/%s %s' % (HPCC_DIR, HPCC_MAKEFILE, HPCC_MAKEFILE_PATH))
   #sed_cmd = (
