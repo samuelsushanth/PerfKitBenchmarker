@@ -71,3 +71,14 @@ unchanged:
  #
  # ----------------------------------------------------------------------
  # - F77 / C interface --------------------------------------------------
+--- hpl-2.0_FERMI_v15/src/cuda/Makefile    2012-07-17 02:35:11.000000000 +0000
++++ hpl-2.0_FERMI_v15/src/cuda/Makefile.modified   2017-01-14 00:42:27.078695198 +0000
+@@ -39,6 +39,7 @@
+ #DEFINES += -DVERBOSE_PRINT
+ #DEFINES += -DACML
+ #DEFINES += -DGOTO
++DEFINES += -DOPENBLAS
+
+ %.o: %.c
+        mpicc -O0 -c -fPIC $(DEFINES) $*.c -o $*.o -I/usr/local/cuda/include
+

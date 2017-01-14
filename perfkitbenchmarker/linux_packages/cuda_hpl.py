@@ -49,7 +49,7 @@ def AptInstall(vm):
   vm.RemoteCommand('cd %s && patch -p0 < %s' % (INSTALL_DIR, HPL_PATCH))
   sed_cmd = 'sed -i s,HPL_DIR=.*$,HPL_DIR=%s, bin/CUDA/run_linpack' % HPL_DIR
   vm.RemoteCommand('cd %s && %s' % (HPL_DIR, sed_cmd))
-  vm.RemoteCommand('cd %s && TOPdir=%s make' % HPL_DIR)
+  vm.RemoteCommand('cd %s && TOPdir=%s make' % (HPL_DIR, HPL_DIR))
 
 
 def YumInstall(vm):
