@@ -46,7 +46,7 @@ unchanged:
 -#endif
 +#else
 +#ifdef OPENBLAS
-+      handle2 = dlopen("libopenblas.so", RTLD_LAZY);
++      handle = dlopen("libopenblas.so", RTLD_LAZY);
 +#else
  #ifdef ACML
        handle = dlopen ("libacml_mp.so", RTLD_LAZY);
@@ -58,6 +58,25 @@ unchanged:
  
        if (!handle) {
          fprintf (stderr, "%s\n", dlerror());
+@@ -669,12 +684,17 @@
+
+ #ifdef GOTO
+       dgemm_mkl = (void(*)())dlsym(handle, "dgemm_");
+-#endif
++#else
++#ifdef OPENBLAS
++      dgemm_mkl = (void(*)())dlsym(handle, "dgemm_");
++#else
+ #ifdef ACML
+       dgemm_mkl = (void(*)())dlsym(handle, "dgemm_");
+ #else
+       dgemm_mkl = (void(*)())dlsym(handle, "dgemm");
+ #endif
++#endif
++#endif
+
+
+        if ((error = dlerror()) != NULL)  {
 only in patch2:
 unchanged:
 --- hpl-2.0_FERMI_v15/Make.CUDA	2012-07-16 19:35:11.000000000 -0700
