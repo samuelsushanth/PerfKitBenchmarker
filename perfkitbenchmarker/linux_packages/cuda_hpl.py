@@ -34,11 +34,9 @@ HPL_TAR = 'hpl-2.0_FERMI_v15.tgz'
 HPL_PATCH = 'hpl_cuda.patch'
 HPL_DIR = '%s/hpl-2.0_FERMI_v15' % INSTALL_DIR
 MAKE_FLAVOR = 'Linux_PII_CBLAS'
-#HPCC_MAKEFILE = 'Make.' + MAKE_FLAVOR
-#HPCC_MAKEFILE_PATH = HPCC_DIR + '/hpl/' + HPCC_MAKEFILE
 
 
-def _Install(vm):
+def AptInstall(vm):
   """Installs the CUDA HPL package on the VM."""
   vm.Install('wget')
   #vm.Install('openmpi')
@@ -50,24 +48,13 @@ def _Install(vm):
   vm.RemoteCommand('cd %s && tar xvf %s' % (INSTALL_DIR, HPL_TAR))
   vm.RemoteCommand('cd %s && patch -p0 < %s' % (INSTALL_DIR, HPL_PATCH))
   sed_cmd = 'sed -i s,HPL_DIR=.*$,HPL_DIR=%s, bin/CUDA/run_linpack' % HPL_DIR
-  vm.RemoteCommand('cd %s && %s' % (INSTALL_DIR, sed_cmd))
-  #vm.RemoteCommand(
-  #    'cp %s/hpl/setup/%s %s' % (HPCC_DIR, HPCC_MAKEFILE, HPCC_MAKEFILE_PATH))
-  #sed_cmd = (
-  #    'sed -i -e "/^MP/d" -e "s/gcc/mpicc/" -e "s/g77/mpicc/" '
-  #    '-e "s/\\$(HOME)\\/netlib\\/ARCHIVES\\/Linux_PII/%s/" '
-  #    '-e "s/libcblas.*/libopenblas.a/" '
-  #    '-e "s/\\-lm/\\-lgfortran \\-lm/" %s' %
-  #    (re.escape(openblas.OPENBLAS_DIR), HPCC_MAKEFILE_PATH))
-  #vm.RemoteCommand(sed_cmd)
-  #vm.RemoteCommand('cd %s; make arch=Linux_PII_CBLAS' % HPCC_DIR)
+  vm.RemoteCommand('cd %s && %s' % (HPL_DIR, sed_cmd))
+  vm.RemoteCommand('cd %s && TOPdir=%s make' % HPL_DIR)
 
 
 def YumInstall(vm):
-  """Installs the CUDA HPL package on the VM."""
-  _Install(vm)
+  """TODO: PKB currently only supports the installation of CUDA HPL
+     on Ubuntu.
+  """
+  raise NotImplementedError()
 
-
-def AptInstall(vm):
-  """Installs the CUDA HPL package on the VM."""
-  _Install(vm)
