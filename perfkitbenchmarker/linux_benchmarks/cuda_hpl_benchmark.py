@@ -65,8 +65,8 @@ cuda_hpl:
     default:
       vm_spec:
         GCP:
-          image: /ubuntu-os-cloud/ubuntu-1604-xenial-v20161115
-          machine_type: n1-standard-4-k80x1
+          image: ubuntu1604-cuda-hpl
+          machine_type: n1-standard-8-k80x2
           zone: us-east1-d
           boot_disk_size: 200
 """
