@@ -40,6 +40,7 @@ http://www.netlib.org/benchmark/hpl/faqs.html
 import logging
 import math
 import re
+import ipdb
 
 from perfkitbenchmarker import configs
 from perfkitbenchmarker import data
@@ -114,6 +115,10 @@ def CreateMachineFile(vms):
                                             vm.num_cpus))
     machine_file.close()
     master_vm.PushFile(machine_file.name, MACHINEFILE)
+
+
+def CalculateGpuToCpuFlopsRatio():
+  tesla_k80_gpu_flops = 1.455 * 1e12
 
 
 def CreateHpccinf(vm, benchmark_spec):
@@ -209,11 +214,11 @@ def UpdateMetadata(metadata):
     metadata['mpi_env'] = FLAGS.hpcc_mpi_env
 
 
-def ParseOutput(hpcc_output, benchmark_spec):
-  """Parses the output from HPCC.
+def ParseOutput(hpl_output, benchmark_spec):
+  """Parses the output from HPL.
 
   Args:
-    hpcc_output: A string containing the text of hpccoutf.txt.
+    hpcc_output: A string containing the hpl output. 
     benchmark_spec: The benchmark specification. Contains all data that is
         required to run the benchmark.
 
@@ -222,26 +227,25 @@ def ParseOutput(hpcc_output, benchmark_spec):
   """
   results = []
   metadata = dict()
-  match = re.search('HPLMaxProcs=([0-9]*)', hpcc_output)
-  metadata['num_cpus'] = match.group(1)
   metadata['num_machines'] = len(benchmark_spec.vms)
+  # num_gpus
+  # cpu_cores_per_gpu
+  # N
+  # NB
+  # P
+  # Q
   UpdateMetadata(metadata)
-  value = regex_util.ExtractFloat('HPL_Tflops=([0-9]*\\.[0-9]*)', hpcc_output)
-  results.append(sample.Sample('HPL Throughput', value, 'Tflops', metadata))
+  hpl_output_lines = hpl_output.splitlines()
+  find_results_header_regex = r'T\/V\s+N\s+NB\s+P\s+Q\s+Time\s+Gflops\s*$'
+  for idx, line in enumerate(hpl_output_lines):
+    if re.match(find_results_header_regex, line):
+      results_line_idx = idx + 2
+      break
 
-  value = regex_util.ExtractFloat('SingleRandomAccess_GUPs=([0-9]*\\.[0-9]*)',
-                                  hpcc_output)
-  results.append(sample.Sample('Random Access Throughput', value,
-                               'GigaUpdates/sec'))
+  #ipdb.set_trace()
+  value = float(hpl_output_lines[results_line_idx].split()[-1])
+  results.append(sample.Sample('HPL Throughput', value, 'Gflops', metadata))
 
-  for metric in STREAM_METRICS:
-    regex = 'SingleSTREAM_%s=([0-9]*\\.[0-9]*)' % metric
-    value = regex_util.ExtractFloat(regex, hpcc_output)
-    results.append(sample.Sample('STREAM %s Throughput' % metric, value,
-                                 'GB/s'))
-
-  value = regex_util.ExtractFloat(r'PTRANS_GBs=([0-9]*\.[0-9]*)', hpcc_output)
-  results.append(sample.Sample('PTRANS Throughput', value, 'GB/s', metadata))
   return results
 
 
