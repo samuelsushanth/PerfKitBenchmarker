@@ -225,16 +225,8 @@ def ParseOutput(hpl_output, benchmark_spec):
   Returns:
     A list of samples to be published (in the same format as Run() returns).
   """
-  results = []
-  metadata = dict()
-  metadata['num_machines'] = len(benchmark_spec.vms)
   # num_gpus
   # cpu_cores_per_gpu
-  # N
-  # NB
-  # P
-  # Q
-  UpdateMetadata(metadata)
   hpl_output_lines = hpl_output.splitlines()
   find_results_header_regex = r'T\/V\s+N\s+NB\s+P\s+Q\s+Time\s+Gflops\s*$'
   for idx, line in enumerate(hpl_output_lines):
@@ -242,10 +234,17 @@ def ParseOutput(hpl_output, benchmark_spec):
       results_line_idx = idx + 2
       break
 
-  #ipdb.set_trace()
-  value = float(hpl_output_lines[results_line_idx].split()[-1])
-  results.append(sample.Sample('HPL Throughput', value, 'Gflops', metadata))
-
+  hpl_results = hpl_output_lines[results_line_idx].split()
+  metadata = dict()
+  metadata['num_machines'] = len(benchmark_spec.vms)
+  metadata['N'] = int(hpl_results[1])
+  metadata['NB'] = int(hpl_results[2])
+  metadata['P'] = int(hpl_results[3])
+  metadata['Q'] = int(hpl_results[4])
+  UpdateMetadata(metadata)
+  
+  flops = float(hpl_results[6])
+  results = [sample.Sample('HPL Throughput', flops, 'Gflops', metadata)]
   return results
 
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Tests for the CUDA-enabled HPL benchmark."""
+import ipdb
 import os
 import unittest
 
@@ -37,8 +38,14 @@ class CudaHplTestCase(unittest.TestCase):
     result = cuda_hpl_benchmark.ParseOutput(self.contents, benchmark_spec)
     self.assertEqual(1, len(result))
     results = {i[0]: i[1] for i in result}
+    metadata = result[0].metadata
 
     self.assertAlmostEqual(904.4, results['HPL Throughput'])
+    self.assertEqual('Gflops', result[0].unit)
+    self.assertEqual(50000, metadata['N'])
+    self.assertEqual(768, metadata['NB'])
+    self.assertEqual(1, metadata['P'])
+    self.assertEqual(2, metadata['Q'])
 
 if __name__ == '__main__':
   unittest.main()
