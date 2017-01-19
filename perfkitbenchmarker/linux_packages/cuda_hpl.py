@@ -13,8 +13,8 @@
 # limitations under the License.
 
 
-"""Module containing NVIDIA's CUDA Accelerated Linpack installation and 
-   cleanup functions. 
+"""Module containing NVIDIA's CUDA Accelerated Linpack installation and
+   cleanup functions.
 
    Due to NVIDIA's license, the tarball must be downloaded
    manually from NVIDIA and placed in PKB's data folder.
