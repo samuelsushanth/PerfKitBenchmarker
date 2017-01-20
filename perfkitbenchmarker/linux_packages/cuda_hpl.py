@@ -33,7 +33,7 @@ from perfkitbenchmarker import data
 HPL_TAR = 'hpl-2.0_FERMI_v15.tgz'
 HPL_PATCH = 'hpl_cuda.patch'
 HPL_DIR = '%s/hpl-2.0_FERMI_v15' % INSTALL_DIR
-MAKE_FLAVOR = 'Linux_PII_CBLAS'
+HPL_BIN_DIR = '%s/bin/CUDA' % HPL_DIR
 
 
 def AptInstall(vm):

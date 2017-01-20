@@ -47,5 +47,12 @@ class CudaHplTestCase(unittest.TestCase):
     self.assertEqual(1, metadata['P'])
     self.assertEqual(2, metadata['Q'])
 
+  def testGenerateHplConfiguration(self):
+    benchmark_spec = mock.MagicMock()
+    result = cuda_hpl_benchmark.GenerateHplConfiguration(
+        self.contents, benchmark_spec)
+
+    self.assertEqual('N:40', result)
+
 if __name__ == '__main__':
   unittest.main()

@@ -40,6 +40,7 @@ http://www.netlib.org/benchmark/hpl/faqs.html
 import logging
 import math
 import re
+import os
 import ipdb
 
 from perfkitbenchmarker import configs
@@ -48,13 +49,14 @@ from perfkitbenchmarker import flags
 from perfkitbenchmarker import regex_util
 from perfkitbenchmarker import sample
 from perfkitbenchmarker import vm_util
-from perfkitbenchmarker.linux_packages import hpcc
+from perfkitbenchmarker.linux_packages import cuda_hpl
+from perfkitbenchmarker.linux_packages import cuda_toolkit_8
 
 FLAGS = flags.FLAGS
-HPCCINF_FILE = 'hpccinf.txt'
+LOCAL_HPL_CONFIG_FILE = 'cuda_hpl_config.txt'
+REMOTE_HPL_CONFIG_FILE = 'HPL.dat'
 MACHINEFILE = 'machinefile'
-BLOCK_SIZE = 192
-STREAM_METRICS = ['Copy', 'Scale', 'Add', 'Triad']
+BLOCK_SIZE = 1024
 
 BENCHMARK_NAME = 'cuda_hpl'
 BENCHMARK_CONFIG = """
@@ -72,10 +74,10 @@ cuda_hpl:
           boot_disk_size: 200
 """
 
-#flags.DEFINE_integer('memory_size_mb',
-#                     None,
-#                     'The amount of memory in MB on each machine to use. By '
-#                     'default it will use the entire system\'s memory.')
+flags.DEFINE_integer('cuda_hpl_memory_size_mb',
+                     None,
+                     'The amount of memory in MB on each machine to use. By '
+                     'default it will use the entire system\'s memory.')
 #flags.DEFINE_string('hpcc_binary', None,
 #                    'The path of prebuilt hpcc binary to use. If not provided, '
 #                    'this benchmark built its own using OpenBLAS.')
@@ -96,7 +98,7 @@ def CheckPrerequisites(benchmark_config):
   Raises:
     perfkitbenchmarker.data.ResourceNotFound: On missing resource.
   """
-  #data.ResourcePath(HPCCINF_FILE)
+  data.ResourcePath(LOCAL_HPL_CONFIG_FILE)
   #if FLAGS['hpcc_binary'].present:
   #  data.ResourcePath(FLAGS.hpcc_binary)
 
@@ -121,11 +123,12 @@ def CalculateGpuToCpuFlopsRatio():
   tesla_k80_gpu_flops = 1.455 * 1e12
 
 
-def CreateHpccinf(vm, benchmark_spec):
-  """Creates the HPCC input file."""
+def GenerateHplConfiguration(vm, benchmark_spec):
+  """Create the HPL configuration file."""
   num_vms = len(benchmark_spec.vms)
-  if FLAGS.memory_size_mb:
-    total_memory = FLAGS.memory_size_mb * 1024 * 1024 * num_vms
+  assert num_vms == 1
+  if FLAGS.cuda_hpl_memory_size_mb:
+    total_memory = FLAGS.cuda_hpl_memory_size_mb * 1024 * 1024 * num_vms
   else:
     # Sum of Free, Cached, Buffers in kb
     stdout, _ = vm.RemoteCommand("""
@@ -140,6 +143,7 @@ def CreateHpccinf(vm, benchmark_spec):
     available_memory = int(stdout)
     total_memory = available_memory * 1024 * num_vms
   total_cpus = vm.num_cpus * num_vms
+  total_gpus = cuda_toolkit_8.QueryNumberOfGpus(vm) * num_vms
   block_size = BLOCK_SIZE
 
   # Finds a problem size that will fit in memory and is a multiple of the
@@ -150,20 +154,21 @@ def CreateHpccinf(vm, benchmark_spec):
   problem_size = block_size * blocks
 
   # Makes the grid as 'square' as possible, with rows < columns
-  sqrt_cpus = int(math.sqrt(total_cpus)) + 1
+  sqrt_gpus = int(math.sqrt(total_gpus)) + 1
   num_rows = 0
   num_columns = 0
-  for i in reversed(range(sqrt_cpus)):
-    if total_cpus % i == 0:
+  for i in reversed(range(sqrt_gpus)):
+    if total_gpus % i == 0:
       num_rows = i
-      num_columns = total_cpus / i
+      num_columns = total_gpus / i
       break
 
-  file_path = data.ResourcePath(HPCCINF_FILE)
-  vm.PushFile(file_path, HPCCINF_FILE)
+  local_file_path = data.ResourcePath(LOCAL_HPL_CONFIG_FILE)
+  remote_file_path = REMOTE_HPL_CONFIG_FILE
+  vm.PushFile(local_file_path, remote_file_path)
   sed_cmd = (('sed -i -e "s/problem_size/%s/" -e "s/block_size/%s/" '
               '-e "s/rows/%s/" -e "s/columns/%s/" %s') %
-             (problem_size, block_size, num_rows, num_columns, HPCCINF_FILE))
+             (problem_size, block_size, num_rows, num_columns, remote_file_path))
   vm.RemoteCommand(sed_cmd)
 
 
@@ -171,22 +176,6 @@ def PrepareCudaHpl(vm):
   """Builds CUDA HPL on a single vm."""
   logging.info('Building CUDA HPL on %s', vm)
   vm.Install('cuda_hpl')
-
-
-def PrepareBinaries(vms):
-  """Prepare binaries on all vms."""
-  master_vm = vms[0]
-  if FLAGS.hpcc_binary:
-    master_vm.PushFile(
-        data.ResourcePath(FLAGS.hpcc_binary), './hpcc')
-  else:
-    master_vm.RemoteCommand('cp %s/hpcc hpcc' % hpcc.HPCC_DIR)
-
-  for vm in vms[1:]:
-    vm.Install('fortran')
-    master_vm.MoveFile(vm, 'hpcc', 'hpcc')
-    master_vm.MoveFile(vm, '/usr/bin/orted', 'orted')
-    vm.RemoteCommand('sudo mv orted /usr/bin/orted')
 
 
 def Prepare(benchmark_spec):
@@ -200,7 +189,7 @@ def Prepare(benchmark_spec):
   master_vm = vms[0]
 
   PrepareCudaHpl(master_vm)
-  #CreateHpccinf(master_vm, benchmark_spec)
+  GenerateHplConfiguration(master_vm, benchmark_spec)
   #CreateMachineFile(vms)
   #PrepareBinaries(vms)
 
@@ -260,14 +249,15 @@ def Run(benchmark_spec):
   """
   vms = benchmark_spec.vms
   master_vm = vms[0]
-  num_processes = len(vms) * master_vm.num_cpus
-  mpi_env = ' '.join(['-x %s' % v for v in FLAGS.hpcc_mpi_env])
-  mpi_cmd = ('mpirun -np %s -machinefile %s --mca orte_rsh_agent '
-             '"ssh -o StrictHostKeyChecking=no" %s ./hpcc' %
-             (num_processes, MACHINEFILE, mpi_env))
+  num_gpus = cuda_toolkit_8.QueryNumberOfGpus(master_vm) * len(vms) #TODO: cache
+  #mpi_env = ' '.join(['-x %s' % v for v in FLAGS.hpcc_mpi_env])
+  run_linpack_path = os.path.join(cuda_hpl.HPL_BIN_DIR,
+                                   'run_linpack')
+  mpi_cmd = ('mpirun -np %s %s' %
+             (num_gpus, run_linpack_path))
   master_vm.RobustRemoteCommand(mpi_cmd)
-  logging.info('HPCC Results:')
-  stdout, _ = master_vm.RemoteCommand('cat hpccoutf.txt', should_log=True)
+  logging.info('CUDA HPL Results:')
+  stdout, _ = master_vm.RemoteCommand('cat HPL.out', should_log=True)
 
   return ParseOutput(stdout, benchmark_spec)
 
