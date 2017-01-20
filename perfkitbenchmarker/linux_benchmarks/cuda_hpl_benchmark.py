@@ -216,6 +216,7 @@ def ParseOutput(hpl_output, benchmark_spec):
   """
   # num_gpus
   # cpu_cores_per_gpu
+  print(hpl_output)
   hpl_output_lines = hpl_output.splitlines()
   find_results_header_regex = r'T\/V\s+N\s+NB\s+P\s+Q\s+Time\s+Gflops\s*$'
   for idx, line in enumerate(hpl_output_lines):
@@ -255,7 +256,7 @@ def Run(benchmark_spec):
                                    'run_linpack')
   mpi_cmd = ('mpirun -np %s %s' %
              (num_gpus, run_linpack_path))
-  master_vm.RobustRemoteCommand(mpi_cmd)
+  master_vm.RemoteCommand(mpi_cmd)
   logging.info('CUDA HPL Results:')
   stdout, _ = master_vm.RemoteCommand('cat HPL.out', should_log=True)
 
