@@ -72,6 +72,15 @@ cuda_hpl:
           machine_type: n1-standard-8-k80x2
           zone: us-east1-d
           boot_disk_size: 200
+        AWS:
+          image: ami-a9d276c9
+          machine_type: p2.xlarge
+          zone: us-west-2b
+          boot_disk_size: 200
+        Azure:
+          image: Canonical:UbuntuServer:16.04.0-LTS:latest
+          machine_type: Standard_NC6
+          zone: eastus
 """
 
 flags.DEFINE_integer('cuda_hpl_memory_size_mb',
