@@ -141,7 +141,6 @@ def GenerateHplConfiguration(vm, benchmark_spec):
         """)
     available_memory = int(stdout)
     total_memory = available_memory * 1024 * num_vms
-  total_cpus = vm.num_cpus * num_vms
   total_gpus = cuda_toolkit_8.QueryNumberOfGpus(vm) * num_vms
   block_size = BLOCK_SIZE
 
@@ -213,8 +212,6 @@ def ParseOutput(hpl_output, benchmark_spec, cpus_used):
   Returns:
     A list of samples to be published (in the same format as Run() returns).
   """
-  # num_gpus
-  # cpu_cores_per_gpu
   hpl_output_lines = hpl_output.splitlines()
   find_results_header_regex = r'T\/V\s+N\s+NB\s+P\s+Q\s+Time\s+Gflops\s*$'
   for idx, line in enumerate(hpl_output_lines):
@@ -238,23 +235,23 @@ def ParseOutput(hpl_output, benchmark_spec, cpus_used):
   return results
 
 
-def GenerateUpdateRunLinpackSedCmd(num_cpus, num_gpus):
-  cpus_per_gpu = num_cpus / num_gpus
-  run_linpack_path = os.path.join(cuda_hpl.HPL_BIN_DIR,
-                                  'run_linpack')
-  # gpu_flops / cpu_flops per core * num_core_per_gpu + gpu_flops
-  cuda_dgemm_split = 2910 / (2.3 * 16 * cpus_per_gpu + 2910)
-  cuda_dtrsm_split = cuda_dgemm_split - 0.1
-  sed_cmd = (('sed -i -e "s/\(CPU_CORES_PER_GPU=\).*/\1%s/" '
-              '-e "s/\(CUDA_DGEMM_SPLIT=\).*/\1%s/" '
-              '-e "s/\(CUDA_DTRSM_SPLIT=\).*/\1%s/" %s') %
-             (cpus_per_gpu, cuda_dgemm_split, cuda_dtrsm_split,
-              run_linpack_path))
-  return sed_cmd
-
-
-def UpdateRunLinkpackConfig(num_cpus, num_gpus, vm):
-  vm.RemoteCommand(GenerateUpdateRunLinpackSedCmd(num_cpus, num_gpus))
+#def GenerateUpdateRunLinpackSedCmd(num_cpus, num_gpus):
+#  cpus_per_gpu = num_cpus / num_gpus
+#  run_linpack_path = os.path.join(cuda_hpl.HPL_BIN_DIR,
+#                                  'run_linpack')
+#  # gpu_flops / cpu_flops per core * num_core_per_gpu + gpu_flops
+#  cuda_dgemm_split = 2910 / (2.3 * 16 * cpus_per_gpu + 2910)
+#  cuda_dtrsm_split = cuda_dgemm_split - 0.1
+#  sed_cmd = (('sed -i -e "s/\(CPU_CORES_PER_GPU=\).*/\1%s/" '
+#              '-e "s/\(CUDA_DGEMM_SPLIT=\).*/\1%s/" '
+#              '-e "s/\(CUDA_DTRSM_SPLIT=\).*/\1%s/" %s') %
+#             (cpus_per_gpu, cuda_dgemm_split, cuda_dtrsm_split,
+#              run_linpack_path))
+#  return sed_cmd
+#
+#
+#def UpdateRunLinkpackConfig(num_cpus, num_gpus, vm):
+#  vm.RemoteCommand(GenerateUpdateRunLinpackSedCmd(num_cpus, num_gpus))
 
 
 def Run(benchmark_spec):
@@ -272,20 +269,13 @@ def Run(benchmark_spec):
   run_linpack_path = os.path.join(cuda_hpl.HPL_BIN_DIR,
                                    'run_linpack')
   num_gpus = cuda_toolkit_8.QueryNumberOfGpus(master_vm) * len(vms)
-  num_cpus = master_vm.num_cpus
+  #num_cpus = master_vm.num_cpus
   mpi_cmd = ('mpirun -np %s %s' %
              (num_gpus, run_linpack_path))
   
   results = []
-  num_cpus_to_use = num_cpus
-  UpdateRunLinkpackConfig(num_cpus_to_use, num_gpus, master_vm)
-  master_vm.RemoteCommand(mpi_cmd)
-  logging.info('CUDA HPL Results:')
-  run_results, _ = master_vm.RemoteCommand('cat HPL.out', should_log=True)
-  results.extend(ParseOutput(run_results, benchmark_spec, num_cpus_to_use))
-
-  num_cpus_to_use = num_cpus / 2
-  UpdateRunLinkpackConfig(num_cpus_to_use, num_gpus, master_vm)
+  #num_cpus_to_use = num_cpus
+  #UpdateRunLinkpackConfig(num_cpus_to_use, num_gpus, master_vm)
   master_vm.RemoteCommand(mpi_cmd)
   logging.info('CUDA HPL Results:')
   run_results, _ = master_vm.RemoteCommand('cat HPL.out', should_log=True)
