@@ -87,14 +87,6 @@ flags.DEFINE_integer('cuda_hpl_memory_size_mb',
                      None,
                      'The amount of memory in MB on each machine to use. By '
                      'default it will use the entire system\'s memory.')
-#flags.DEFINE_string('hpcc_binary', None,
-#                    'The path of prebuilt hpcc binary to use. If not provided, '
-#                    'this benchmark built its own using OpenBLAS.')
-#flags.DEFINE_list('hpcc_mpi_env', [],
-#                  'Comma seperated list containing environment variables '
-#                  'to use with mpirun command. e.g. '
-#                  'MKL_DEBUG_CPU_TYPE=7,MKL_ENABLE_INSTRUCTIONS=AVX512')
-
 
 
 def GetConfig(user_config):
@@ -108,8 +100,6 @@ def CheckPrerequisites(benchmark_config):
     perfkitbenchmarker.data.ResourceNotFound: On missing resource.
   """
   data.ResourcePath(LOCAL_HPL_CONFIG_FILE)
-  #if FLAGS['hpcc_binary'].present:
-  #  data.ResourcePath(FLAGS.hpcc_binary)
 
 
 def CreateMachineFile(vms):
@@ -200,7 +190,6 @@ def Prepare(benchmark_spec):
   PrepareCudaHpl(master_vm)
   GenerateHplConfiguration(master_vm, benchmark_spec)
   #CreateMachineFile(vms)
-  #PrepareBinaries(vms)
 
 
 def UpdateMetadata(metadata):
@@ -219,6 +208,7 @@ def ParseOutput(hpl_output, benchmark_spec, cpus_used):
     hpcc_output: A string containing the hpl output. 
     benchmark_spec: The benchmark specification. Contains all data that is
         required to run the benchmark.
+    cpus_used: Number of physical CPU cores used to run the benchmark. 
 
   Returns:
     A list of samples to be published (in the same format as Run() returns).
@@ -240,6 +230,7 @@ def ParseOutput(hpl_output, benchmark_spec, cpus_used):
   metadata['P'] = int(hpl_results[3])
   metadata['Q'] = int(hpl_results[4])
   metadata['cpus_used'] = cpus_used
+  metadata['test_version'] = "0.1"
   UpdateMetadata(metadata)
   
   flops = float(hpl_results[6])

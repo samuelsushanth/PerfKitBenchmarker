@@ -15,8 +15,7 @@
 """Tests for the CUDA-enabled HPL benchmark."""
 import ipdb
 import os
-import unittest
-
+import unittest 
 import mock
 
 from perfkitbenchmarker.linux_benchmarks import cuda_hpl_benchmark
@@ -35,7 +34,10 @@ class CudaHplTestCase(unittest.TestCase):
 
   def testParseHpl(self):
     benchmark_spec = mock.MagicMock()
-    result = cuda_hpl_benchmark.ParseOutput(self.contents, benchmark_spec)
+    cpus_used = 2
+    result = cuda_hpl_benchmark.ParseOutput(self.contents,
+                                            benchmark_spec,
+                                            cpus_used)
     self.assertEqual(1, len(result))
     results = {i[0]: i[1] for i in result}
     metadata = result[0].metadata
@@ -47,11 +49,15 @@ class CudaHplTestCase(unittest.TestCase):
     self.assertEqual(1, metadata['P'])
     self.assertEqual(2, metadata['Q'])
 
-  @unittest.skip('Fix this')
-  def testGenerateHplConfiguration(self):
+  @mock.patch('perfkitbenchmarker.linux_packages.cuda_toolkit_8.QueryNumberOfGpus')
+  def testGenerateHplConfiguration(self, numGpusMock):
+    numGpusMock.return_value = 2
     benchmark_spec = mock.MagicMock()
+    benchmark_spec.vms.__len__ = lambda self: 1
+    vm = mock.MagicMock()
+
     result = cuda_hpl_benchmark.GenerateHplConfiguration(
-        self.contents, benchmark_spec)
+        vm, benchmark_spec)
 
     self.assertEqual('N:40', result)
 
