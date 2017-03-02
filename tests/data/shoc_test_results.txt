@@ -1,0 +1,13 @@
+--- Welcome To The SHOC Benchmark Suite version 1.1.5 ---
+Hostname: pkb-1d2a0552-0
+Platform selection not specified, default to platform #0
+Number of available platforms: 1
+Number of available devices on platform 0 : 1
+Device 0: 'Tesla K80'
+Device selection not specified: defaulting to device #0.
+Using size class: 4
+
+--- Starting Benchmarks ---
+Running benchmark Stencil2D
+  result for stencil:                        124.8580 GFLOPS
+  result for stencil_dp:                      69.2245 GFLOPS

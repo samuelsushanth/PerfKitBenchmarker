@@ -41,7 +41,7 @@ BENCHMARK_SETS = {
             'cluster_boot', 'copy_throughput', 'coremark', 'fio',
             'hadoop_terasort', 'hpcc', 'iperf', 'mesh_network',
             'mongodb_ycsb', 'netperf', 'object_storage_service', 'ping',
-            'redis', 'speccpu2006', 'sysbench_oltp', 'unixbench']
+            'redis', 'shoc', 'speccpu2006', 'sysbench_oltp', 'unixbench']
     },
     'arm_set': {
         MESSAGE: 'ARM benchmark set.',
@@ -86,7 +86,8 @@ BENCHMARK_SETS = {
             'fio', 'gpu_pcie_bandwidth', 'hadoop_terasort', 'hpcc', 'iperf',
             'multichase', 'mesh_network', 'mongodb_ycsb', 'netperf',
             'object_storage_service', 'oldisim', 'ping', 'redis_ycsb',
-            'speccpu2006', 'sysbench_oltp', 'tomcat_wrk', 'unixbench']
+            'shoc', 'speccpu2006', 'sysbench_oltp', 'tomcat_wrk',
+            'unixbench']
     },
     'intel_set': {
         MESSAGE: 'Intel benchmark set.',
