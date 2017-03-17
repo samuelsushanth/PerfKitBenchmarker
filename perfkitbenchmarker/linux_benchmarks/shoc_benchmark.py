@@ -28,7 +28,7 @@ from perfkitbenchmarker.linux_packages import cuda_toolkit_8
 from perfkitbenchmarker import num_gpus_map_util
 
 
-flags.DEFINE_integer('shoc_iterations', 1,
+flags.DEFINE_integer('shoc_iterations', 5,
                      'number of iterations to run',
                      lower_bound=1)
 
@@ -41,7 +41,7 @@ NETWORK_DELAY_CMD = 'tc qdisc add dev ens5 root netem delay {}ms'
 NETWORK_DELAY_TEARDOWN_CMD = 'tc qdisc del dev eth0 root'
 MACHINEFILE = 'machinefile'
 BENCHMARK_NAME = 'shoc'
-BENCHMARK_VERSION = '0.23'
+BENCHMARK_VERSION = '0.24'
 # Note on the config: gce_migrate_on_maintenance must be false,
 # because GCE does not support migrating the user's GPU state.
 BENCHMARK_CONFIG = """
@@ -94,57 +94,12 @@ def AssertCorrectNumberOfGpus(vm):
                     'Expected %s, received %s' %
                     (expected_num_gpus, actual_num_gpus))
 
-def RunCmd(vm, command, user=None, command_context=None):
-  if command_context:
-    command = command.format(**command_context)
-  command = MakeRemoteCommand(user, command)
-  return vm.RemoteCommand(command)
 
-
-def MakeRemoteCommand(user, command):
-  if user is None:
-    return command
-  else:
-    return "sudo -u {user} -i -- sh -c '{command}'".format(
-        user=user, command=command)
-
-
-def ClearNetworking(vms):
-  cmds = [NETWORK_DELAY_TEARDOWN_CMD,]
-  cmds.append(NETWORK_BUSY_READ.format(0))
-  cmds.append(NETWORK_BUSY_POLL.format(0))
-  cmd = ';'.join(cmds)
-  vm_util.RunThreaded(lambda vm: RunCmd(vm, cmd, 'root'), vms)
-
-
-def SetNetworkSettings(vms, busy_read, busy_poll, network_delay):
-  """Sets network features if non zero, returning options set.
-
-  Args:
-    vms: worker vms to run on
-    busy_read: integer to set busy read to
-    busy_poll: integer to set busy poll to
-    network_delay: float of milliseconds for ethernet delay
-
-  Returns:
-    Dict of non-zero network settings for putting into labels
-  """
-
-  cmds = list()
-  context = dict()
-  if busy_poll:
-    cmds.append(NETWORK_BUSY_POLL.format(busy_poll))
-    context['network_busy_poll'] = busy_poll
-  if busy_read:
-    cmds.append(NETWORK_BUSY_READ.format(busy_read))
-    context['network_busy_read'] = busy_read
-  if network_delay:
-    cmds.append(NETWORK_DELAY_CMD.format(network_delay))
-    context['network_delay_ms'] = network_delay
-  cmd = ';'.join(cmds)
-  if cmd:
-    vm_util.RunThreaded(lambda vm: RunCmd(vm, cmd, 'root'), vms)
-  return context
+def _InstallAndAuthenticateVm(vm):
+    vm.Install('shoc_benchmark_suite')
+    AssertCorrectNumberOfGpus(vm)
+    cuda_toolkit_8.SetAndConfirmGpuClocks(vm)
+    vm.AuthenticateVm()  # Configure ssh between vms for MPI
 
 
 def Prepare(benchmark_spec):
@@ -154,19 +109,12 @@ def Prepare(benchmark_spec):
     benchmark_spec: The benchmark specification. Contains all data that is
         required to run the benchmark.
   """
-  for vm in benchmark_spec.vms:  #TODO: run-threaded
-    vm.Install('shoc_benchmark_suite')
-    AssertCorrectNumberOfGpus(vm)
-    cuda_toolkit_8.SetAndConfirmGpuClocks(vm)
-    vm.AuthenticateVm()  # Configure ssh between vms for MPI
+
+  vm_util.RunThreaded(_InstallAndAuthenticateVm, benchmark_spec.vms)
 
   master_vm = benchmark_spec.vms[0]
   num_gpus = cuda_toolkit_8.QueryNumberOfGpus(master_vm)
   CreateAndPushMachineFile(benchmark_spec.vms, num_gpus)
-  #busy_read = 0
-  #busy_poll = 0
-  #network_delay = 5
-  #SetNetworkSettings(benchmark_spec.vms, busy_read, busy_poll, network_delay)
 
 
 def CreateAndPushMachineFile(vms, num_gpus):
@@ -207,34 +155,47 @@ def _MakeSamplesFromOutput(stdout, metadata):
 
 
 def _MakeSamplesFromStencilOutput(stdout, metadata):
-  dp_mean_results = [x for x in stdout.splitlines() if x.find('DP_Sten2D(mean)') != -1][0].split()
-  dp_units = dp_mean_results[2]
-  dp_median = float(dp_mean_results[3])
-  dp_mean = float(dp_mean_results[4])
-  dp_stddev = float(dp_mean_results[5])
-  dp_min = float(dp_mean_results[6])
-  dp_max = float(dp_mean_results[7])
+  dp_median_results = [x for x in stdout.splitlines() if x.find('DP_Sten2D(median)') != -1][0].split()
+  dp_units = dp_median_results[2]
+  dp_median = float(dp_median_results[3])
 
-  sp_mean_results = [x for x in stdout.splitlines() if x.find('SP_Sten2D(mean)') != -1][0].split()
-  sp_units = sp_mean_results[2]
-  sp_median = float(sp_mean_results[3])
-  sp_mean = float(sp_mean_results[4])
-  sp_stddev = float(sp_mean_results[5])
-  sp_min = float(sp_mean_results[6])
-  sp_max = float(sp_mean_results[7])
+  dp_stddev_results = [x for x in stdout.splitlines() if x.find('DP_Sten2D(stddev)') != -1][0].split()
+  dp_stddev_units = dp_stddev_results[2]
+  dp_stddev_median = float(dp_stddev_results[3])
+
+  sp_median_results = [x for x in stdout.splitlines() if x.find('SP_Sten2D(median)') != -1][0].split()
+  sp_units = sp_median_results[2]
+  sp_median = float(sp_median_results[3])
+
+  sp_stddev_results = [x for x in stdout.splitlines() if x.find('SP_Sten2D(stddev)') != -1][0].split()
+  sp_stddev_units = sp_stddev_results[2]
+  sp_stddev_median = float(sp_stddev_results[3])
 
   results = []
   results.append(sample.Sample(
-      'Stencil2D DP mean',
-      dp_mean,
+      'Stencil2D DP median',
+      dp_median,
       dp_units,
       metadata))
 
   results.append(sample.Sample(
-      'Stencil2D SP mean',
-      sp_mean,
+      'Stencil2D DP stddev',
+      dp_stddev_median,
+      dp_stddev_units,
+      metadata))
+
+  results.append(sample.Sample(
+      'Stencil2D SP median',
+      sp_median,
       sp_units,
       metadata))
+
+  results.append(sample.Sample(
+      'Stencil2D SP stddev',
+      sp_stddev_median,
+      sp_stddev_units,
+      metadata))
+
   return results
 
 
@@ -256,8 +217,9 @@ def Run(benchmark_spec):
   stencil2d_path = os.path.join(shoc_benchmark_suite.SHOC_BIN_DIR,
                                 'TP', 'CUDA', 'Stencil2D')
   num_processes = len(vms) * num_gpus
-  run_command = ('mpirun --hostfile %s -np %s %s --customSize %s' %
-                 (MACHINEFILE, num_processes, stencil2d_path, problem_size))
+  run_command = ('mpirun --hostfile %s -np %s %s --customSize %s -n %s' %
+                 (MACHINEFILE, num_processes, stencil2d_path, problem_size,
+                  num_iterations))
   metadata = {}
   results = []
   metadata['benchmark_version'] = BENCHMARK_VERSION
