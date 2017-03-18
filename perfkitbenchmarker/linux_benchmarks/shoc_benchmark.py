@@ -213,27 +213,39 @@ def Run(benchmark_spec):
   master_vm = vms[0]
   num_gpus = cuda_toolkit_8.QueryNumberOfGpus(master_vm)  #TODO: Dont replicate
   num_iterations = FLAGS.shoc_iterations
-  problem_size = FLAGS.problem_size
+  #problem_size = FLAGS.problem_size
   stencil2d_path = os.path.join(shoc_benchmark_suite.SHOC_BIN_DIR,
                                 'TP', 'CUDA', 'Stencil2D')
   num_processes = len(vms) * num_gpus
-  run_command = ('mpirun --hostfile %s -np %s %s --customSize %s -n %s' %
-                 (MACHINEFILE, num_processes, stencil2d_path, problem_size,
-                  num_iterations))
+
   metadata = {}
-  results = []
   metadata['benchmark_version'] = BENCHMARK_VERSION
   metadata['num_iterations'] = num_iterations
   metadata['gpus_per_node'] = num_gpus
   metadata['memory_clock_MHz'] = FLAGS.gpu_clock_speeds[0]
   metadata['graphics_clock_MHz'] = FLAGS.gpu_clock_speeds[1]
-  metadata['run_command'] = run_command
   metadata['num_nodes'] = len(vms)
   metadata['num_processes'] = num_processes
-  metadata['problem_size'] = problem_size
 
-  stdout, _ = master_vm.RemoteCommand(run_command, should_log=True)
-  results.extend(_MakeSamplesFromStencilOutput(stdout, metadata))
+  results = []
+
+  initial_problem_size = 1024
+  max_problem_size = 20000
+  problem_size_step = 1024
+
+  for problem_size in range(initial_problem_size, max_problem_size + 1, problem_size_step):
+    current_problem_size = '%s,%s' % (problem_size, problem_size)
+
+    run_command = ('mpirun --hostfile %s -np %s %s --customSize %s -n %s' %
+                   (MACHINEFILE, num_processes, stencil2d_path, current_problem_size,
+                    num_iterations))
+
+    metadata['run_command'] = run_command
+    metadata['problem_size'] = current_problem_size
+
+    stdout, _ = master_vm.RemoteCommand(run_command, should_log=True)
+    results.extend(_MakeSamplesFromStencilOutput(stdout, metadata.copy()))
+
   return results
 
 

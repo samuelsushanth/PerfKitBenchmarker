@@ -1,32 +1,3 @@
-assert_num_gpus:
-  name: assert_num_gpus 
-  vm_groups:
-    default:
-      vm_spec:
-        GCP:
-          boot_disk_size: 200
-  flag_matrix_defs:
-    GCP:
-      gce_migrate_on_maintenance: [False]
-      image: [ubuntu1604-cuda-hpl]
-      machine_type: [
-        n1-standard-4-k80x1, n1-standard-8-k80x1, n1-standard-8-k80x2,
-        n1-standard-16-k80x2, n1-standard-16-k80x4, n1-standard-32-k80x4,
-        n1-standard-32-k80x8
-      ]
-      zones: [us-east1-d]
-    AWS:
-      image: [ami-c870f3a8]
-      machine_type: [
-        p2.xlarge, p2.8xlarge, p2.16xlarge
-      ]
-      zones: [us-west-2b]
-    Azure:
-      image: ["Canonical:UbuntuServer:16.04.0-LTS:latest"]
-      machine_type: [
-        Standard_NC6, Standard_NC12, Standard_NC24
-      ]
-      zones: [eastus]
 shoc:
   name: shoc 
   vm_groups:
@@ -41,7 +12,8 @@ shoc:
       machine_type: [
         n1-standard-4-k80x1, n1-standard-8-k80x1, n1-standard-8-k80x2,
         n1-standard-16-k80x2, n1-standard-16-k80x4, n1-standard-32-k80x4,
-        n1-standard-32-k80x8
+        n1-standard-32-k80x8, n1-highmem-4-k80x1, n1-highmem-8-k80x2,
+        n1-highmem-16-k80x4, n1-highmem-32-k80x8
       ]
       zones: [us-east1-d]
     AWS:
