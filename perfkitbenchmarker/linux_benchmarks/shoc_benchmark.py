@@ -231,7 +231,7 @@ def Run(benchmark_spec):
 
   initial_problem_size = 1024
   max_problem_size = 20000
-  problem_size_step = 1024
+  problem_size_step = 2048
 
   for problem_size in range(initial_problem_size, max_problem_size + 1, problem_size_step):
     current_problem_size = '%s,%s' % (problem_size, problem_size)
