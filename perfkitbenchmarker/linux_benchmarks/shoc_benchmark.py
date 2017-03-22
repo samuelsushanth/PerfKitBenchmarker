@@ -229,7 +229,7 @@ def Run(benchmark_spec):
 
   results = []
 
-  initial_problem_size = 1024
+  initial_problem_size = 19456
   max_problem_size = 20000
   problem_size_step = 2048
 
